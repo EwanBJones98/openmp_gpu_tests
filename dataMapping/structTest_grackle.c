@@ -72,69 +72,35 @@ int main(int arvc, char *argv[])
     print_field(my_fields.pressure, my_fields.field_size, "initial pressure ");
     print_field(my_fields.internal_energy, my_fields.field_size, "initial internal energy ");
 
-    // Declare mapper for grackle_fields struct
-    // #pragma omp declare mapper(grackle_fields_mapper: my_fields f) \
-    //         map(f, f.density[0:f.field_size],\
-    //             f.internal_energy[0:f.field_size],\
-    //             f.pressure[0:f.field_size])
+    //Declare mapper for grackle_fields struct
+    #pragma omp declare mapper(grackle_fields_mapper: my_fields f) \
+            map(f, f.density[0:f.field_size],\
+                f.internal_energy[0:f.field_size],\
+                f.pressure[0:f.field_size])
 
-    // Test passing struct to target region
-    // #pragma omp target enter data map(to:mapper(grackle_fields_mapper))
-    // #pragma omp target enter data map(to:my_fields.pressure[:my_fields.field_size],\
-    //                                      my_fields.internal_energy[:my_fields.field_size],\
-    //                                      my_fields.density[:my_fields.field_size])
+    //Test passing struct to target region
+    #pragma omp target enter data map(to:mapper(grackle_fields_mapper))
+    #pragma omp target enter data map(to:my_fields.pressure[:my_fields.field_size],\
+                                         my_fields.internal_energy[:my_fields.field_size],\
+                                         my_fields.density[:my_fields.field_size])
 
-    // #pragma omp target
-    // {
-    //     for (int i=0; i < my_fields.field_size; i++){
-    //         my_fields.pressure[i] = 1.;
-    //         my_fields.density[i] = 1.;
-    //         my_fields.internal_energy[i] = 1.;
-    //     }
-    // }
-
-    // // #pragma omp target exit data map(from:mapper(grackle_fields_mapper))
-    // #pragma omp target exit data map(from:my_fields.pressure[:my_fields.field_size],\
-    //                                       my_fields.internal_energy[:my_fields.field_size],\
-    //                                       my_fields.density[:my_fields.field_size])
-
-    // print_field(my_fields.density, my_fields.field_size, "final density ");
-    // print_field(my_fields.pressure, my_fields.field_size, "final pressure ");
-    // print_field(my_fields.internal_energy, my_fields.field_size, " final internal energy ");
-
-
-    //! --- start of test ---
-    // Test passing a simple array to the target device and modifying its values
-
-    double *test_array;
-    int N;
-    N = 10;
-    test_array = (double*) malloc(N * sizeof(double));
-    for (int i=0; i<N; i++){
-        test_array[i] = i*10.;
+    #pragma omp target
+    {
+        for (int i=0; i < my_fields.field_size; i++){
+            my_fields.pressure[i] = 1.;
+            my_fields.density[i] = 1.;
+            my_fields.internal_energy[i] = 1.;
+        }
     }
 
-    fprintf(stderr, "-- Initial values ---\n");
-    for (int i=0; i<N; i++){
-        fprintf(stderr, "\t %d = %g\n", i, test_array[i]);
-    }
+    // #pragma omp target exit data map(from:mapper(grackle_fields_mapper))
+    #pragma omp target exit data map(from:my_fields.pressure[:my_fields.field_size],\
+                                          my_fields.internal_energy[:my_fields.field_size],\
+                                          my_fields.density[:my_fields.field_size])
 
-    #pragma omp target enter data map(to:test_array[:N], N)
-
-    #pragma omp target teams distribute parallel for
-    for (int i=0; i<N; i++){
-        test_array[i] *= 2;
-    }
-
-    #pragma omp target exit data map(from:test_array[:N])
-
-    fprintf(stderr, "-- Final values ---\n");
-    for (int i=0; i<N; i++){
-        fprintf(stderr, "\t %d = %g\n", i, test_array[i]);
-    } 
-
-    //! --- end of test ---
-
+    print_field(my_fields.density, my_fields.field_size, "final density ");
+    print_field(my_fields.pressure, my_fields.field_size, "final pressure ");
+    print_field(my_fields.internal_energy, my_fields.field_size, " final internal energy ");
 
     //! BELOW CODE IS HOW THE LOOPS ARE IMPLEMENTED IN GRACKLE CURRENTLY
     

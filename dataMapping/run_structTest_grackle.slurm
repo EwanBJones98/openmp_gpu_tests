@@ -5,8 +5,8 @@
 #SBATCH --time=00:01:00
 #SBATCH --ntasks=1
 
-set LogFile=output_arrayTest.log
+set LogFile=output_structTest_grackle.log
 env > $LogFile
 groups >> $LogFile
 
-./arrayTest >> $LogFile
+./structTest_grackle >> $LogFile
