@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "structTest.h"
-
 #if _OPENMP
     #include <omp.h>
 #endif
