@@ -1,0 +1,3 @@
+Matrix Dimensions | Number of Timing Iterations | Number of Teams | Number of Threads | Number of Threads per Team | Average Time (s)
+-------------------------------------------------------------------------------------------------------------------------------------
+10                |100                          |-2046777488      |22051              |10                          |0.000582945      

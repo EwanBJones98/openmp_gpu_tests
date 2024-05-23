@@ -1,6 +1,0 @@
-
-libgomp: cuCtxSynchronize error: an illegal memory access was encountered
-
-libgomp: cuMemFree_v2 error: an illegal memory access was encountered
-
-libgomp: device finalization failed

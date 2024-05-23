@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "string_view": "c",
+        "unistd.h": "c",
+        "functional": "c"
+    }
+}
