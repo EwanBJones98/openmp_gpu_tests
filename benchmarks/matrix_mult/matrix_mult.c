@@ -9,7 +9,6 @@
 #endif
 
 
-
 typedef struct
 {
     double *values;
@@ -18,6 +17,37 @@ typedef struct
 
 } square_matrix;
 
+
+
+int* logspace_int(int start, int end, int num_values)
+{
+    int *result;
+
+    result = malloc(sizeof(int) * num_values);
+    double spacing = (log(end) - log(start)) / (num_values-1);
+
+    for (int i=0; i<num_values; i++)
+    {
+        result[i] = (int) exp(log(start) + spacing * i);
+    }
+    
+    return result;
+}
+
+int* linspace_int(int start, int end, int num_values)
+{
+    int *result;
+    result = malloc(sizeof(int) * num_values);
+
+    double spacing = (end - start) / (num_values-1);
+
+    for (int i=0; i<num_values; i++)
+    {
+        result[i] = (int) (start + spacing * i);
+    }
+
+    return result;
+}
 
 
 void get_gpu_parameters(int num_teams_requested, int *num_threads, int *num_teams, int *num_threads_per_team)
@@ -42,8 +72,24 @@ void get_gpu_parameters(int num_teams_requested, int *num_threads, int *num_team
     *num_threads_per_team = n_threads_per_team;
 }
 
+int check_gpu_memory(int matrix_side_length, double vram_gb)
+{
+    size_t max_matrix_size = sizeof(double) * matrix_side_length * matrix_side_length + 2 * sizeof(int);
+    size_t vram_avail      = vram_gb * 1e9; 
+    if (3*max_matrix_size >= vram_avail)
+    {
+        int largest_possible_matrix_dim = (int) sqrt((vram_avail/3 - 2 * sizeof(int)) / sizeof(double));
+        fprintf(stdout, "Matrix of dimension %dx%d is too large!\n", matrix_side_length, matrix_side_length); 
+        fprintf(stdout, "Largest theoretical dimension of matrix supported with %f GB of vram is %dx%d!\n", vram_gb,
+                        largest_possible_matrix_dim, largest_possible_matrix_dim);
+        return 0;
+    }
+    return 1;
+}
+
 int write_results_to_file(int new_file, char filename[30], int matrix_size, int num_iter,
-                          int num_teams, int num_threads, int num_threads_per_team, double avg_time)
+                          int num_teams, int num_threads, int num_threads_per_team,
+                          double total_time, double transfer_time, double calculation_time)
 {
     /*
         new_file = 1 --> create new file
@@ -59,20 +105,19 @@ int write_results_to_file(int new_file, char filename[30], int matrix_size, int 
         if ((fptr = fopen(filename, "w+")) == NULL) return 0;
 
         
-        fprintf(fptr, "Matrix Dimensions | Number of Timing Iterations | Number of Teams | Number of Threads | Number of Threads per Team | Average Time (s)\n");
-        fprintf(fptr, "-------------------------------------------------------------------------------------------------------------------------------------\n");
+        fprintf(fptr, "Matrix Dimensions | Number of Timing Iterations | Number of Teams | Number of Threads | Number of Threads per Team | Total Time (s) | Data Transfer Time (s) | Calculation Time (s)\n");
+        fprintf(fptr, "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
     // Append results to pre-existing file
     } else {
         if ((fptr = fopen(filename, "a")) == NULL) return 0;
     }
     
     // Write results to the file.
-    fprintf(fptr, "%-18d|%-29d|%-17d|%-19d|%-28d|%-17g\n", matrix_size, num_iter, num_teams, num_threads, num_threads_per_team, avg_time);
+    fprintf(fptr, "%-18d|%-29d|%-17d|%-19d|%-28d|%-17g|%-24g|%-21g\n", matrix_size, num_iter, num_teams, num_threads, num_threads_per_team, total_time, transfer_time, calculation_time);
     fclose(fptr);
 
     return 1;
 }
-
 
 void initialise_matrix(square_matrix *M, int side_length)
 {
@@ -103,20 +148,40 @@ int matrix_is_close(square_matrix *result, square_matrix *expected_result)
     return 1;
 }
 
-double run_test(int num_teams, int matrix_side_length)
+void map_to(square_matrix *A, square_matrix *B, square_matrix *C)
+{
+    #pragma omp target enter data map(alloc: A->side_length, A->values[:A->values_length],\
+                                             B->values[:B->values_length],\
+                                             C->side_length, C->values[:C->values_length])
+
+    #pragma omp target update to(A->side_length, A->values[:A->values_length],\
+                                 B->values[:B->values_length],\
+                                 C->side_length, C->values[:C->values_length])
+}
+
+void map_from(square_matrix *A, square_matrix *B, square_matrix *C)
+{
+    #pragma omp target update from(C->values[:C->values_length])
+
+    #pragma omp target exit data map(delete: A->side_length, A->values[:A->values_length],\
+                                             B->values[:B->values_length],\
+                                             C->side_length, C->values[:C->values_length])
+}
+
+double run_test(int num_teams, int matrix_side_length, double *transfer_time, double *calculation_time)
 {
     square_matrix A, B, C;
     initialise_matrix(&A, matrix_side_length);
     initialise_matrix(&B, matrix_side_length);
     initialise_matrix(&C, matrix_side_length);
     
-    double start_time, elapsed_time;
-    
-    #pragma omp declare mapper(square_matrix m) map(m.side_length, m.values_length, m.values[:m.values_length])
+    double start_time, elapsed_time, start_time_calc;
 
     start_time = omp_get_wtime();
 
-    #pragma omp target enter data map(to: A, B, C)
+    map_to(&A, &B, &C);
+
+    start_time_calc = omp_get_wtime();
 
     #pragma omp target teams distribute parallel for collapse(2) num_teams(num_teams)
     for (int i=0; i<C.side_length; i++)
@@ -130,12 +195,14 @@ double run_test(int num_teams, int matrix_side_length)
             }
         }
     }
-    
-    #pragma omp target update from(C)
 
-    #pragma omp target exit data map(release: A, B, C)
+    *calculation_time = omp_get_wtime() - start_time_calc;
+    
+    map_from(&A, &B, &C);
 
     elapsed_time = omp_get_wtime() - start_time;
+
+    *transfer_time = elapsed_time - *calculation_time;
 
     // Check that C has been updated from its initial values
     if (matrix_is_close(&C, &A))
@@ -167,41 +234,75 @@ double run_test(int num_teams, int matrix_side_length)
 
 int main(int argc, char *argv[])
 {
-
+    // GPU specs (6000 ada lovelace)
+    int num_shading_units = 18432;
+    double vram_gb        = 48;
 
     // >>> USER SETTINGS <<<
-    int num_iter = 100;
-    int matrix_side_length = 10;
+    int num_iter = 10;
     char *filename = "benchmark.txt";
+    
+    int min_teams          = 500;
+    int max_teams          = 2 * num_shading_units;
+    int num_team_intervals = 5;
+    int log_team_spacing   = 1;
+
+    int min_dims           = 10;
+    int max_dims           = 10000; //44000;
+    int num_dim_intervals  = 10;
+    int log_dim_spacing    = 1;
     // >>>>>>>>>><<<<<<<<<<
 
 
-    int num_threads, num_teams, num_threads_per_team, new_file, pass;
-    double avg_time;
-    int num_shading_units = 18432;
-    // int max_teams = num_shading_units * 1.1; 
-    int max_teams = 10;
+    if (!check_gpu_memory(max_dims, vram_gb)) exit(0);
 
-    for (int num_teams_requested=1; num_teams_requested<max_teams; num_teams_requested++)
-    {
-        avg_time = 0;
-        for (int iter=0; iter<num_iter; iter++)
-        {
-            avg_time += run_test(num_teams_requested, matrix_side_length) / num_iter;
-        }
-
-        // Write results to file
-        get_gpu_parameters(num_teams_requested, &num_threads, &num_teams, &num_threads_per_team);
-        new_file = (num_teams_requested == 1) ? 1 : 0;
-        pass = write_results_to_file(new_file, filename, matrix_side_length, num_iter, num_teams, num_threads,
-                              num_threads_per_team, avg_time);
-        if (!pass)
-        {
-            fprintf(stdout, "Unable to write results to file! Exiting...\n");
-            exit(0);
-        }
-        fprintf(stdout, "num_teams_requested = %d\n", num_teams_requested);
-    }
+    int *dims      = (log_dim_spacing==1) ? logspace_int(min_dims, max_dims, num_dim_intervals) : linspace_int(min_dims, max_dims, num_dim_intervals);
+    int *num_teams = (log_team_spacing==1) ? logspace_int(min_teams, max_teams, num_team_intervals) : linspace_int(min_teams, max_teams, num_dim_intervals);
     
+    int new_file, pass, num_teams_actual, num_threads_actual, num_threads_per_team_actual;
+    int num_teams_requested=-1, matrix_dims_requested=-1;
+    double total_time, transfer_time, calculation_time;
+    double transfer_time_buffer, calculation_time_buffer;
+
+    for (int i=0; i<num_team_intervals; i++)
+    {
+        if (num_teams_requested == num_teams[i]) continue;
+        num_teams_requested = num_teams[i];
+
+        for (int j=0; j<num_dim_intervals; j++)
+        {
+            total_time = 0;
+            transfer_time = 0;
+            calculation_time = 0;
+
+            if (matrix_dims_requested == dims[j]) continue;
+            matrix_dims_requested = dims[j];
+
+            for (int iter=0; iter<num_iter; iter++)
+            {
+                total_time += run_test(num_teams_requested, matrix_dims_requested, &transfer_time_buffer, &calculation_time_buffer) / num_iter;
+
+                transfer_time    += transfer_time_buffer / num_iter;
+                calculation_time += calculation_time_buffer / num_iter;
+            }
+
+            fprintf(stdout, "Finished test for num_teams=%d, matrix_dim=%d\n", num_teams_requested, matrix_dims_requested);
+
+            // Write results to file
+            get_gpu_parameters(num_teams_requested, &num_threads_actual, &num_teams_actual, &num_threads_per_team_actual);
+            new_file = (i == 0 && j==0) ? 1 : 0;
+            pass = write_results_to_file(new_file, filename, matrix_dims_requested, num_iter, num_teams_actual, num_threads_actual,
+                                num_threads_per_team_actual, total_time, transfer_time, calculation_time);
+            if (!pass)
+            {
+                fprintf(stdout, "Unable to write results to file! Exiting...\n");
+                exit(0);
+            }
+        }
+    }
+
+    free(dims);
+    free(num_teams);
+
     return 1;
 }
