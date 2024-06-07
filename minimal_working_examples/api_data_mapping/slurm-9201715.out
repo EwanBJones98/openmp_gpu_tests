@@ -1,7 +1,0 @@
-"PluginInterface" error: Faliure to copy data from device to host. Pointers: host = 0x00007ffe1ea79220, device = 0x00007fa304e00200, size = 16: Error in cuMemcpyDtoHAsync: an illegal memory access was encountered
-omptarget error: Copying data from device failed.
-omptarget error: Call to targetDataEnd failed, abort target.
-omptarget error: Failed to process data after launching the kernel.
-omptarget error: Consult https://openmp.llvm.org/design/Runtimes.html for debugging options.
-data_map.c:31:5: omptarget fatal error 1: failure of target construct while offloading is mandatory
-Abort
