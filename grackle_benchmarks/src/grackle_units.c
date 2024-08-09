@@ -40,3 +40,8 @@ double get_temperature_units(code_units *my_units)
   double velocity_units = get_velocity_units(my_units);
   return mh * POW(velocity_units, 2) / kboltz;
 }
+
+void set_temperature_units(code_units *my_units)
+{
+  my_units->temperature_units = get_temperature_units(my_units);
+}

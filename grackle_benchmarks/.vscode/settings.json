@@ -8,6 +8,9 @@
         "vector": "c",
         "string_view": "c",
         "initializer_list": "c",
-        "functional": "c"
+        "functional": "c",
+        "grackle_chemistry_data.h": "c",
+        "calculate_pressure.h": "c",
+        "calculate_gamma.h": "c"
     }
 }

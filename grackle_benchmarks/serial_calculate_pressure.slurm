@@ -4,4 +4,4 @@
 set LogFile=output.log
 env > $LogFile
 groups >> $LogFile
-./bin/calculate_pressure >> $LogFile
+./bin/calculate_pressure 2 1000 100 100 timings/gpu_cpu_serial.txt >> $LogFile

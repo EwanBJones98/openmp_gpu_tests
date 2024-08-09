@@ -1,9 +1,15 @@
 # tool macros
 CC := clang
 CXX ?= # FILL: the compiler
-CFLAGS := -lm -fopenmp --offload-arch=sm_89 -D OMIT_LEGACY_INTERNAL_GRACKLE_FUNC -D GPU
-#CFLAGS := -lm -fopenmp -D OMIT_LEGACY_INTERNAL_GRACKLE_FUNC -D CPU
-#CFLAGS := -lm -D OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
+
+CFLAGS := -g -lm -fopenmp --offload-arch=sm_89 -D OMIT_LEGACY_INTERNAL_GRACKLE_FUNC -D GPU -D PRESET_TESTS
+# CFLAGS := -O1 -g -lm -fopenmp --offload-arch=sm_89 -D OMIT_LEGACY_INTERNAL_GRACKLE_FUNC -D GPU -D PRESET_TESTS
+#CFLAGS := -O2 -g -lm -fopenmp --offload-arch=sm_89 -D OMIT_LEFACY_INTERNAL_GRACKLE_FUNC -D GPU -D PRESET_TESTS
+
+#CFLAGS := -O2 -lm -fopenmp -D OMIT_LEGACY_INTERNAL_GRACKLE_FUNC -D CPU
+
+#CFLAGS := -D OPT_TEST=\"O2\" -O2 -lm -D OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
+
 CXXFLAGS := # FILL: compile flags
 DBGFLAGS := -g
 COBJFLAGS := $(CFLAGS) -c
@@ -15,7 +21,7 @@ SRC_PATH := src
 DBG_PATH := debug
 
 # compile macros
-TARGET_NAME := calculate_pressure # FILL: target name
+TARGET_NAME := run_benchmarks # FILL: target name
 ifeq ($(OS),Windows_NT)
 	TARGET_NAME := $(addsuffix .exe,$(TARGET_NAME))
 endif

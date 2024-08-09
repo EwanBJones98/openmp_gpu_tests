@@ -90,6 +90,7 @@ typedef struct
   double length_units;
   double time_units;
   double velocity_units;
+  double temperature_units;
   double a_units;
   double a_value;
 
