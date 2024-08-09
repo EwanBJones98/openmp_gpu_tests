@@ -9,7 +9,6 @@
 #include "phys_constants.h"
 #include "grackle_macros.h"
 
-#include "write_timings.h"
 #include "calculate_gamma.h"
 
 #ifdef _OPENMP

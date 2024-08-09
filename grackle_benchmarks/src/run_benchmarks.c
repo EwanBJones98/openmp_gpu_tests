@@ -11,8 +11,10 @@
 
 #include "write_timings.h"
 #include "worksharing_info.h"
+
 #include "calculate_pressure.h"
 #include "calculate_gamma.h"
+#include "calculate_temperature.h"
 
 #ifdef _OPENMP
     #include <omp.h>
@@ -39,6 +41,13 @@ int read_command_line_arguments(int argc, char *argv[], int *primordial_chemistr
     *grid_dimension_i     = (int) atol(argv[2]);
     *numThreadsPerTeam    = (int) atol(argv[3]);
     strcpy(timings_dir, argv[4]);
+
+    // If the number of threads per team == -1 then allow to compiler to use its default number
+    if (*numThreadsPerTeam == -1)
+    {
+        int buffer1, buffer2;
+        gpu_default_worksharing_info(&buffer1, &buffer2, numThreadsPerTeam);
+    }
 
     return 1;
 }
@@ -241,6 +250,19 @@ int main(int argc, char *argv[])
     int max_threads = max_threads_per_sm * num_sm;
     
     int numTeams = (int) max_threads / numThreadsPerTeam;
+
+    // Check that the GPU is active and can allocate the desired number of threads/teams
+    if (omp_get_default_device() != 0)
+    {
+        fprintf(stderr, "GPU inactive!\nExiting...\n");
+        exit(0);
+    }
+    if (!check_gpu_worksharing(&numTeams, &numThreadsPerTeam))
+    {
+        fprintf(stderr, "Error allocating requested number of teams/threads per team");
+        fprintf(stderr, "please see stdout stream for more information.\nExiting...\n");
+        exit(0);
+    }
     // >>> ------------------------- <<<
 
     // >>> Set grackle parameters <<<
@@ -292,19 +314,18 @@ int main(int argc, char *argv[])
 
 
     // >>> Run temperature test <<<
-    //! NOT YET IMPLEMENTED
-    // run_benchmark(calculate_temperature, enter_calculate_temperature, exit_calculate_temperature,
-    //                my_chemistry, my_rates, my_fields, my_units, num_timing_iter, calc_times,
-    //                data_times, numTeams, numThreadsPerTeam);
+    run_benchmark(calculate_temperature, enter_calculate_temperature, exit_calculate_temperature,
+                   my_chemistry, my_rates, my_fields, my_units, num_timing_iter, calc_times,
+                   data_times, numTeams, numThreadsPerTeam);
 
-    // strcpy(savepath_buffer, timing_dir);
-    // strcat(savepath_buffer, "temperature.txt");
+    strcpy(savepath_buffer, timing_dir);
+    strcat(savepath_buffer, "temperature.txt");
 
-    // write_timings(num_timing_iter, calc_times, data_times, numTeams, numThreadsPerTeam,
-    //                parallel_mode, my_fields, my_chemistry, 0, savepath_buffer);
+    write_timings(num_timing_iter, calc_times, data_times, numTeams, numThreadsPerTeam,
+                   parallel_mode, my_fields, my_chemistry, 0, savepath_buffer);
     // >>> ----------------- <<<
 
-
+ 
     // >>> Cleanup memory <<<
     free_grackle_structs(my_chemistry, my_rates, my_fields, my_units);
     free(calc_times);

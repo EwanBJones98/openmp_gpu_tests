@@ -39,8 +39,10 @@ void gpu_default_worksharing_info(int *gpu_active, int *num_teams, int *num_thre
 }
 
 
-void check_gpu_worksharing(int *nTeams, int *nThreadsPerTeam)
+int check_gpu_worksharing(int *nTeams, int *nThreadsPerTeam)
 {
+    int result = 1;
+
     int _nTeams, _nThreadsPerTeam;
     #pragma omp target teams map(tofrom:_nTeams, _nThreadsPerTeam) \
         num_teams(*nTeams)
@@ -55,13 +57,15 @@ void check_gpu_worksharing(int *nTeams, int *nThreadsPerTeam)
     {
         fprintf(stderr, "Number of teams requested: %d\n", *nTeams);
         fprintf(stderr, "Number of teams allocated: %d\n", _nTeams);
-        *nTeams = _nTeams;
+        result = 0;
     }
 
     if (_nThreadsPerTeam != *nThreadsPerTeam)
     {
         fprintf(stderr, "Number of threads per team requested: %d\n", *nThreadsPerTeam);
         fprintf(stderr, "Number of threads per team allocated: %d\n", _nThreadsPerTeam);
-        *nThreadsPerTeam = _nThreadsPerTeam;
+        result = 0;
     }
+
+    return result;
 }
