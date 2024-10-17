@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from collections import defaultdict
 
 # Function to read timing data file for grackle benchmarks
@@ -43,4 +44,4 @@ def read_timing_data(filepath, columns, column_datatypes, skip_lines=2, delimite
     for data_key in data.keys():
         data[data_key] = np.array(data[data_key])
         
-    return data
+    return pd.DataFrame.from_dict(data)

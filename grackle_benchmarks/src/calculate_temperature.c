@@ -10,6 +10,8 @@
 #include "phys_constants.h"
 #include "grackle_macros.h"
 
+#include "utility.h"
+
 #include "calculate_temperature.h"
 #include "calculate_pressure.h"
 
@@ -27,14 +29,8 @@ int calculate_temperature(double *temperature,
                           int nThreadsPerTeam)
 {
     // >>> First calculate the pressure <<<
-    //! Dont really get why this is done as the pressure is not stored in the struct,
-    //!  and is not used for the rest of the calculation. Commenting out for now as it is
-    //!  a pain to allocate a pressure array on the GPU and I don't think the pressure has
-    //!  any affect on the temperature calculation -- at least for these tests.
-    // double *pressure;
-    // pressure = malloc(field_length * sizeof(double));
-    // calculate_pressure(pressure, field_length, my_chemistry, my_rates,
-    //                    my_fields, my_units), nTeams, nThreadsPerTeam;
+    //  The pressure is stored in the temperature array to save memory
+    calculate_pressure(temperature, field_length, my_chemistry, my_rates, my_fields, my_units, nTeams, nThreadsPerTeam);
     // >>> ---------------------------- <<<
 
     if (my_chemistry->primordial_chemistry == 0)
@@ -45,6 +41,7 @@ int calculate_temperature(double *temperature,
 
     if (my_chemistry->primordial_chemistry > 0)
     {
+
         #if defined(CPU) && defined(_OPENMP)
             #pragma omp parallel for schedule(runtime)
         #elif defined(GPU) && defined(_OPENMP)
@@ -68,11 +65,12 @@ int calculate_temperature(double *temperature,
                 0.5 * (my_fields->H2I_density[i] + my_fields->H2II_density[i]);
             }
 
+            //! Do not worry about this for now
             // Metals
-            if (my_fields->metal_density != NULL)
-            {   
-                number_density += my_fields->metal_density[i] * 1. / 16.;
-            }
+            // if (my_fields->metal_density != NULL)
+            // {   
+            //     number_density += my_fields->metal_density[i] * 1. / 16.;
+            // }
 
             //Ignore deuterium
 

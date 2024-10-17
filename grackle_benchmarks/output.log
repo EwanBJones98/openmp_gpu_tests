@@ -7,7 +7,7 @@ __MODULES_LMALTNAME=clang/18.1.4/sm_89&as|clang/default&as|clang/latest&as|clang
 build_alias=x86_64-conda-linux-gnu
 CMAKE_ARGS=-DCMAKE_LINKER=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-strip
 GPROF=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-gprof
-TERMCAP=SC|screen.xterm-256color|VT 100/ANSI X3.64 virtual terminal:DO=\E[%dB:LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:bs:bt=\E[Z:cd=\E[J:ce=\E[K:cl=\E[H\E[J:cm=\E[%i%d;%dH:ct=\E[3g:do=^J:nd=\E[C:pt:rc=\E8:rs=\Ec:sc=\E7:st=\EH:up=\EM:le=^H:bl=^G:cr=^M:it#8:ho=\E[H:nw=\EE:ta=^I:is=\E)0:li#24:co#80:am:xn:xv:LP:sr=\EM:al=\E[L:AL=\E[%dL:cs=\E[%i%d;%dr:dl=\E[M:DL=\E[%dM:dc=\E[P:DC=\E[%dP:im=\E[4h:ei=\E[4l:mi:IC=\E[%d@:ks=\E[?1h\E=:ke=\E[?1l\E>:vi=\E[?25l:ve=\E[34h\E[?25h:vs=\E[34l:ti=\E[?1049h:te=\E[?1049l:us=\E[4m:ue=\E[24m:so=\E[3m:se=\E[23m:mb=\E[5m:md=\E[1m:mh=\E[2m:mr=\E[7m:me=\E[m:ms:Co#8:pa#64:AF=\E[3%dm:AB=\E[4%dm:op=\E[39;49m:AX:vb=\Eg:G0:as=\E(0:ae=\E(B:ac=\140\140aaffggjjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~..--++,,hhII00:po=\E[5i:pf=\E[4i:Km=\E[<:k0=\E[10~:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:k5=\E[15~:k6=\E[17~:k7=\E[18~:k8=\E[19~:k9=\E[20~:k;=\E[21~:F1=\E[23~:F2=\E[24~:kB=\E[Z:kh=\E[1~:@1=\E[1~:kH=\E[4~:@7=\E[4~:kN=\E[6~:kP=\E[5~:kI=\E[2~:kD=\E[3~:ku=\EOA:kd=\EOB:kr=\EOC:kl=\EOD:km:
+TERMCAP=SC|screen.xterm-256color|VT 100/ANSI X3.64 virtual terminal:DO=\E[%dB:LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:bs:bt=\E[Z:cd=\E[J:ce=\E[K:cl=\E[H\E[J:cm=\E[%i%d;%dH:ct=\E[3g:do=^J:nd=\E[C:pt:rc=\E8:rs=\Ec:sc=\E7:st=\EH:up=\EM:le=^H:bl=^G:cr=^M:it#8:ho=\E[H:nw=\EE:ta=^I:is=\E)0:li#23:co#88:am:xn:xv:LP:sr=\EM:al=\E[L:AL=\E[%dL:cs=\E[%i%d;%dr:dl=\E[M:DL=\E[%dM:dc=\E[P:DC=\E[%dP:im=\E[4h:ei=\E[4l:mi:IC=\E[%d@:ks=\E[?1h\E=:ke=\E[?1l\E>:vi=\E[?25l:ve=\E[34h\E[?25h:vs=\E[34l:ti=\E[?1049h:te=\E[?1049l:us=\E[4m:ue=\E[24m:so=\E[3m:se=\E[23m:mb=\E[5m:md=\E[1m:mh=\E[2m:mr=\E[7m:me=\E[m:ms:Co#8:pa#64:AF=\E[3%dm:AB=\E[4%dm:op=\E[39;49m:AX:vb=\Eg:G0:as=\E(0:ae=\E(B:ac=\140\140aaffggjjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~..--++,,hhII00:po=\E[5i:pf=\E[4i:Km=\E[<:k0=\E[10~:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:k5=\E[15~:k6=\E[17~:k7=\E[18~:k8=\E[19~:k9=\E[20~:k;=\E[21~:F1=\E[23~:F2=\E[24~:kB=\E[Z:kh=\E[1~:@1=\E[1~:kH=\E[4~:@7=\E[4~:kN=\E[6~:kP=\E[5~:kI=\E[2~:kD=\E[3~:ku=\EOA:kd=\EOB:kr=\EOC:kl=\EOD:km:
 _CONDA_PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata_x86_64_conda_cos7_linux_gnu
 STRINGS=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-strings
 CPP=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-cpp
@@ -42,7 +42,7 @@ LC_TERMINAL=iTerm2
 DISK=/disk01/ejones
 CPPFLAGS=-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /home/ejones/codes/anaconda3/include
 LD=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-ld
-SSH_CONNECTION=10.65.192.35 54917 129.215.175.32 22
+SSH_CONNECTION=10.65.193.98 62287 129.215.175.32 22
 READELF=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-readelf
 GXX=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-g++
 GCC_AR=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-gcc-ar
@@ -70,12 +70,12 @@ host_alias=x86_64-conda-linux-gnu
 SHLVL=3
 NM=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-nm
 GCC=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-gcc
-XDG_SESSION_ID=380
+XDG_SESSION_ID=4293
 LD_GOLD=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-ld.gold
 CONDA_PYTHON_EXE=/home/ejones/codes/anaconda3/bin/python
 LD_LIBRARY_PATH=/home/ejones/local/lib:/home/ejones/lib:/usr/local/CLANG/18.1.4/sm_89/lib:/usr/local/CLANG/18.1.4/sm_89/ompd:/usr/local/cuda/11.8/lib64:/home/ejones/local/hdf5/serial/lib:/home/ejones/local/hdf5/serial/lib:/home/ejones/local/lib:/home/ejones/lib:/home/ejones/local/openmpi/lib:/home/ejones/local/openmpi/lib
 XDG_RUNTIME_DIR=/run/user/10036
-SSH_CLIENT=10.65.192.35 54917 22
+SSH_CLIENT=10.65.193.98 62287 22
 CONDA_DEFAULT_ENV=base
 OBJCOPY=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-objcopy
 STRIP=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-strip
@@ -84,7 +84,7 @@ XDG_DATA_DIRS=/usr/local/share:/usr/share:/var/lib/snapd/desktop
 CUDA_MINOR=8
 OBJDUMP=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-objdump
 PATH=/home/ejones/local/bin:/home/ejones/local/sbin:/usr/local/CLANG/18.1.4/sm_89/bin:/usr/local/CLANG/18.1.4/sm_89/share/opt-viewer:/usr/local/cuda/11.8/bin:/home/ejones/local/openmpi/bin:/home/ejones/local/openmpi/bin:/home/ejones/codes/anaconda3/bin:/home/ejones/codes/anaconda3/condabin:/home/ejones/local/bin:/home/ejones/local/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/ejones/bin
-STY=77817.pts-7.cuillin
+STY=1725972.pts-70.cuillin
 MODULEPATH=/etc/environment-modules/modules:/usr/share/modules/versions:/usr/share/modules/$MODULE_VERSION/modulefiles:/usr/share/modules/modulefiles:/usr/local/Modules/modulefiles:/usr/local/oneapi/modulefiles
 CC=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-cc
 _LMFILES_=/usr/local/Modules/modulefiles/cuda/11.8:/usr/local/Modules/modulefiles/clang/18.1.4/sm_89
@@ -93,11 +93,11 @@ CXXFILT=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-c++filt
 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/10036/bus
 C_INCLUDE_PATH=/usr/local/CLANG/18.1.4/sm_89/include
 BUILD=x86_64-conda-linux-gnu
-SSH_TTY=/dev/pts/7
+SSH_TTY=/dev/pts/70
 CPATH=/usr/local/cuda/11.8/include
 RANLIB=/home/ejones/codes/anaconda3/bin/x86_64-conda-linux-gnu-ranlib
 CONDA_BUILD_SYSROOT=/home/ejones/codes/anaconda3/x86_64-conda-linux-gnu/sysroot
-OLDPWD=/home/ejones/codes/openmp_gpu_tests/grackle_benchmarks/timings
+OLDPWD=/home/ejones
 MODULES_CMD=/usr/lib/x86_64-linux-gnu/modulecmd.tcl
 BASH_FUNC_ml%%=() {  module ml "$@"
 }
@@ -109,37 +109,41 @@ BASH_FUNC__module_raw%%=() {  eval `/usr/bin/tclsh8.6 /usr/lib/x86_64-linux-gnu/
 }
 _=/usr/bin/sbatch
 SLURM_CONF=/etc/slurm/slurm.conf
-SLURM_JOB_NAME=gpu_preset_tests.slurm
+SLURM_JOB_NAME=run_benchmarks.slurm
 SLURM_PRIO_PROCESS=0
 SLURM_SUBMIT_DIR=/home/ejones/codes/openmp_gpu_tests/grackle_benchmarks
 SLURM_SUBMIT_HOST=cuillin
+SLURM_TRES_PER_TASK=cpu=1
 OMPI_MCA_plm_slurm_args=--external-launcher
 PRTE_MCA_plm_slurm_args=--external-launcher
 HYDRA_BOOTSTRAP=slurm
 HYDRA_LAUNCHER_EXTRA_ARGS=--external-launcher
 I_MPI_HYDRA_BOOTSTRAP=slurm
 I_MPI_HYDRA_BOOTSTRAP_EXEC_EXTRA_ARGS=--external-launcher
+SLURM_CPUS_PER_TASK=1
+SLURM_NPROCS=1
+SLURM_NTASKS=1
+SLURM_NTASKS_PER_NODE=1
 SLURM_CLUSTER_NAME=cuillin
-SLURM_JOB_ID=9279808
+SLURM_JOB_ID=9349774
 SLURM_JOB_NUM_NODES=1
 SLURM_JOB_NODELIST=worker093
 SLURM_JOB_PARTITION=GPU
 SLURM_JOB_CPUS_PER_NODE=1
 ENVIRONMENT=BATCH
 HOSTNAME=worker093
-SLURM_JOBID=9279808
+SLURM_JOBID=9349774
 SLURM_NNODES=1
 SLURM_NODELIST=worker093
 SLURM_TASKS_PER_NODE=1
-SLURM_MEM_PER_CPU=1024
 SLURM_JOB_ACCOUNT=users
 SLURM_JOB_QOS=normal
 SLURM_TOPOLOGY_ADDR=worker093
 SLURM_TOPOLOGY_ADDR_PATTERN=node
 SLURM_CPUS_ON_NODE=1
-SLURM_JOB_END_TIME=1722527721
-SLURM_JOB_START_TIME=1722520521
-SLURM_TASK_PID=796382
+SLURM_JOB_END_TIME=1725465923
+SLURM_JOB_START_TIME=1725462323
+SLURM_TASK_PID=69086
 SLURM_NODEID=0
 SLURM_PROCID=0
 SLURM_LOCALID=0
@@ -157,19 +161,5 @@ GROUP=student
 PAGER=more
 IDL_STARTUP=/home/ejones/idl/startup.pro
 student users priority
-WORKSHARING_TEST = inactive
-PRESET_TESTS = active
-Running with GPU parallelism!
-	number of threads: 409600
-	number of teams:3200
-
-Iteration 0: pressure = 8.7072e-14
-Iteration 100: pressure = 8.7072e-14
-Iteration 200: pressure = 8.7072e-14
-Iteration 300: pressure = 8.7072e-14
-Iteration 400: pressure = 8.7072e-14
-Iteration 500: pressure = 8.7072e-14
-Iteration 600: pressure = 8.7072e-14
-Iteration 700: pressure = 8.7072e-14
-Iteration 800: pressure = 8.7072e-14
-Iteration 900: pressure = 8.7072e-14
+omp_nthreads can't be set when Grackle isn't compiled with OPENMP
+my_chemistry->omp_nthreads = 7 currently, ignoring this...

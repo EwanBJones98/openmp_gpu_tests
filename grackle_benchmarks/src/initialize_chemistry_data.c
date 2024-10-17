@@ -169,7 +169,11 @@ int local_initialize_chemistry_data(chemistry_data *my_chemistry,
     fprintf(stdout,
             "omp_nthreads can't be set when Grackle isn't compiled with "
             "OPENMP\n");
-    return FAIL;
+    
+    // This is a hacky way to get around a weird problem encountered when running in serial
+    fprintf(stdout, "my_chemistry->omp_nthreads = %d currently, ignoring this...\n", my_chemistry->omp_nthreads);
+    my_chemistry->omp_nthreads = 0;
+    
   }
 # else _OPENMP
   if (my_chemistry->omp_nthreads < 1) {

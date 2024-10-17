@@ -18,9 +18,13 @@
 #include "grackle_chemistry_data.h"
 
 
+double get_velocity_units(code_units *my_units);
+
 void set_velocity_units(code_units *my_units);
 
 double get_temperature_units(code_units *my_units);
+
+void set_temperature_units(code_units *my_units);
 
 int set_default_chemistry_parameters(chemistry_data *my_grackle);
 

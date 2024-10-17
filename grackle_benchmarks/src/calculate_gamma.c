@@ -9,7 +9,10 @@
 #include "phys_constants.h"
 #include "grackle_macros.h"
 
+#include "utility.h"
+
 #include "calculate_gamma.h"
+#include "calculate_temperature.h"
 
 #ifdef _OPENMP
     #include <omp.h>
@@ -27,38 +30,32 @@ int calculate_gamma(double *gamma,
 {
 
     // If molecular hydrogen is not being used, just use monotonic.
-    #if defined(CPU) && defined(_OPENMP)
-        #pragma omp parallel for schedule(runtime)
-    #elif defined(GPU) && defined(_OPENMP)
-        #pragma omp target teams distribute parallel for num_teams(nTeams) num_threads(nThreadsPerTeam)
-    #endif
-    for (int i=0; i<field_length; i++)
-        gamma[i] = my_chemistry->Gamma;
-
-    // If molecular hydrogen is being used then its more sophisticated.
-    if (my_chemistry->primordial_chemistry > 1)
-    {   
-        //! NOT SURE THE BEST WAY TO DO THIS, IF I SHOULD USE THIS TEMPERATURE LIKE THIS
-        // Compute temperature first
-        double *temperature;
-        temperature = malloc(field_length * sizeof(double));
+    if (my_chemistry->primordial_chemistry < 2)
+    {
+        #if defined(CPU) && defined(_OPENMP)
+            #pragma omp parallel for schedule(runtime)
+        #elif defined(GPU) && defined(_OPENMP)
+            #pragma omp target teams distribute parallel for num_teams(nTeams) num_threads(nThreadsPerTeam)
+        #endif
         for (int i=0; i<field_length; i++)
-            temperature[i] = my_fields->internal_energy[i] * my_units->temperature_units;
+            gamma[i] = my_chemistry->Gamma;
+    } else {
+        // If molecular hydrogen is being used then its more sophisticated.
 
-        if (!calculate_temperature_gpu(temperature, field_length, my_chemistry,
-                                       my_rates, my_fields, my_units, nTeams, nThreadsPerTeam))
+        // Here we calculate the temperature values but store them in the gamma array to save memory
+        if (!calculate_temperature(gamma, field_length, my_chemistry,
+                                    my_rates, my_fields, my_units, nTeams, nThreadsPerTeam))
         {
             fprintf(stderr, "Error in calculate_temperature_gpu.\n");
             return 0;
         }
-        //! ----------------------------------------------------------------------------
 
         /* Compute Gamma with molecular Hydrogen formula from Omukau \& Nishi
-       astro-ph/9811308. */
+        astro-ph/9811308. */
         #if defined(_OPENMP) && defined(CPU)
             #pragma omp parallel for schedule (runtime)
         #elif defined(_OPENMP) && defined(GPU)
-            #pragma omp target teams distribute parallel for num_teams(*nTeams) num_threads(*nThreadsPerTeam)
+            #pragma omp target teams distribute parallel for num_teams(nTeams) num_threads(nThreadsPerTeam)
         #endif
         for (int i=0; i<field_length; i++)
         {
@@ -81,7 +78,7 @@ int calculate_gamma(double *gamma,
             double GammaH2Inverse = 0.5*5.0;
             if (nH2 / number_density > 1e-3)
             {
-                double x = 6100.0 / gamma[i];
+                double x = 6100.0 / gamma[i]; // Gamma array here is currently holding temperature values
                 if (x < 10.0)
                     GammaH2Inverse = 0.5 * (5. + 2. * x*x * exp(x)/POW(exp(x)-1., 2));
             }
@@ -90,7 +87,7 @@ int calculate_gamma(double *gamma,
             gamma[i] = 1. + (nH2 + number_density) / (nH2 * GammaH2Inverse + number_density * gamma_inverse);
 
         } // End loop over particles
-    } // End if(primordial_chemistry > 1)
+    } // End primordial chemistry if statement
 
     return 1;
 }

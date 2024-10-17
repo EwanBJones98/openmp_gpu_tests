@@ -7,4 +7,6 @@ void gpu_default_worksharing_info(int *gpu_active, int *num_teams, int *num_thre
 
 int check_gpu_worksharing(int *nTeams, int *nThreadsPerTeam);
 
+int check_cpu_worksharing(int *nTeams);
+
 #endif

@@ -9,20 +9,22 @@
 #include "phys_constants.h"
 #include "grackle_macros.h"
 
+#include "utility.h"
+
 #include "calculate_pressure.h"
 
 #ifdef _OPENMP
     #include <omp.h>
 #endif
 
-void calculate_pressure(double *pressure,
-                        int field_length,
-                        chemistry_data *my_chemistry,
-                        chemistry_data_storage *my_rates,
-                        grackle_field_data *my_fields,
-                        code_units *my_units,
-                        int nTeams,
-                        int nThreadsPerTeam)
+int calculate_pressure(double *pressure,
+                       int field_length,
+                       chemistry_data *my_chemistry,
+                       chemistry_data_storage *my_rates,
+                       grackle_field_data *my_fields,
+                       code_units *my_units,
+                       int nTeams,
+                       int nThreadsPerTeam)
 {
     
     #if defined(_OPENMP) && defined(CPU)
@@ -38,9 +40,8 @@ void calculate_pressure(double *pressure,
 
     if (my_chemistry->primordial_chemistry > 1)
     {
-
         #if defined(_OPENMP) && defined(CPU)
-            #pragma omp parallel for schedule(runtime)
+            #pragma omp parallel for schedule(runtime) 
         #elif defined(_OPENMP) && defined(GPU)
             #pragma omp target teams distribute parallel for num_teams(nTeams) num_threads(nThreadsPerTeam)
         #endif
@@ -80,4 +81,5 @@ void calculate_pressure(double *pressure,
             pressure[index] = max(1e-20, pressure[index]);
         } // End loop
     } // End if primordial_chemistry > 1
+    return 1;
 }

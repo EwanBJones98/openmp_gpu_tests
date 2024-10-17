@@ -23,10 +23,12 @@
 
 double get_velocity_units(code_units *my_units)
 {
-  double velocity_units = my_units->length_units / my_units->time_units;
+  double velocity_units;
+  velocity_units = my_units->length_units / my_units->time_units;
   if (my_units->comoving_coordinates == 1) {
     velocity_units /= my_units->a_value;
   }
+
   return velocity_units;
 }
 

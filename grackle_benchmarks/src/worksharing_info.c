@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "worksharing_info.h"
 
@@ -7,14 +8,13 @@
     #include <omp.h>
 #endif
 
-
 void get_parallel_mode(char *parallel_mode)
 {
     #if defined(GPU) && defined(_OPENMP)
         strcpy(parallel_mode, "GPU");
     #elif defined(CPU) && defined(_OPENMP)
         strcpy(parallel_mode, "CPU");
-    #elif defined(SERIAL) && !defined(_OPENMP)
+    #elif !defined(_OPENMP)
         strcpy(parallel_mode, "serial");
     #else
         fprintf(stderr, "Unknown parallel mode active. Exiting...\n");
@@ -22,50 +22,69 @@ void get_parallel_mode(char *parallel_mode)
     #endif
 }
 
-
-void gpu_default_worksharing_info(int *gpu_active, int *num_teams, int *num_threads_per_team)
-{
-    *gpu_active = omp_get_default_device();
-
-    #pragma omp target teams map(tofrom:num_teams, num_threads_per_team)
+#ifdef GPU
+    void gpu_default_worksharing_info(int *gpu_active, int *num_teams, int *num_threads_per_team)
     {
-        *num_teams = omp_get_num_teams();
-        #pragma omp parallel
+        *gpu_active = omp_get_default_device();
+
+        #pragma omp target teams map(tofrom:num_teams, num_threads_per_team)
         {
-            if (omp_get_team_num() == 0)
-                *num_threads_per_team = omp_get_num_threads();
+            *num_teams = omp_get_num_teams();
+            #pragma omp parallel
+            {
+                if (omp_get_team_num() == 0)
+                    *num_threads_per_team = omp_get_num_threads();
+            }
         }
     }
-}
 
-
-int check_gpu_worksharing(int *nTeams, int *nThreadsPerTeam)
-{
-    int result = 1;
-
-    int _nTeams, _nThreadsPerTeam;
-    #pragma omp target teams map(tofrom:_nTeams, _nThreadsPerTeam) \
-        num_teams(*nTeams)
+    int check_gpu_worksharing(int *nTeams, int *nThreadsPerTeam)
     {
-        _nTeams = omp_get_num_teams();
-        #pragma omp parallel num_threads(*nThreadsPerTeam)
-        #pragma omp single
+        int pass = 1;
+
+        int req_nTeams          = *nTeams;
+        int req_nThreadsPerTeam = *nThreadsPerTeam;
+
+        int _nTeams, _nThreadsPerTeam;
+        #pragma omp target teams distribute parallel for map(to:req_nTeams, req_nThreadsPerTeam) map(tofrom:_nTeams, _nThreadsPerTeam)\
+            num_teams(req_nTeams) num_threads(req_nThreadsPerTeam)
+        for (int i=0; i<10000; i++)
+        {
+            if(pass == 0) continue;
+
+            _nTeams          = omp_get_num_teams();
             _nThreadsPerTeam = omp_get_num_threads();
-    }
 
-    if (_nTeams != *nTeams)
+            if (_nThreadsPerTeam != req_nThreadsPerTeam) pass = 0;
+            if (_nTeams != req_nTeams) pass = 0;
+        }
+
+        fprintf(stderr, "Number of teams requested/allocated: %d/%d\n", req_nTeams, _nTeams);
+        fprintf(stderr, "Number of threads per team requested/allocated: %d/%d\n", req_nThreadsPerTeam, _nThreadsPerTeam);
+
+        *nTeams = _nTeams;
+        *nThreadsPerTeam = _nThreadsPerTeam;
+
+        return pass;
+    }
+#endif
+
+#ifdef CPU
+    int check_cpu_worksharing(int *num_teams)
     {
-        fprintf(stderr, "Number of teams requested: %d\n", *nTeams);
-        fprintf(stderr, "Number of teams allocated: %d\n", _nTeams);
-        result = 0;
-    }
+        // + num_teams here = number of CPU cores
+        // + each CPU core runs one thread
 
-    if (_nThreadsPerTeam != *nThreadsPerTeam)
-    {
-        fprintf(stderr, "Number of threads per team requested: %d\n", *nThreadsPerTeam);
-        fprintf(stderr, "Number of threads per team allocated: %d\n", _nThreadsPerTeam);
-        result = 0;
-    }
+        int n=0;
+        #pragma omp parallel reduction(+:n)
+        n += 1;
 
-    return result;
-}
+        if (*num_teams != n)
+        {
+            fprintf(stderr, "Number of CPU cores requested: %d\n", *num_teams);
+            fprintf(stderr, "Number of CPU cores allocated: %d\n", n);
+            return 0;
+        }
+        return 1;
+    }
+#endif

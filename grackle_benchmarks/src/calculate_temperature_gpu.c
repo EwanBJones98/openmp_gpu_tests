@@ -22,6 +22,8 @@ void enter_calculate_temperature(double *temperature,
     #pragma omp target enter data \
         map(alloc:temperature[:length],\
             my_chemistry->primordial_chemistry,\
+            my_fields->internal_energy[:length],\
+            my_fields->density[:length],\
             my_fields->HeI_density[:length],\
             my_fields->HeII_density[:length],\
             my_fields->HeIII_density[:length],\

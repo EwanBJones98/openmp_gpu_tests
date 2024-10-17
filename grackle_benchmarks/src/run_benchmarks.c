@@ -9,12 +9,16 @@
 #include "phys_constants.h"
 #include "grackle_macros.h"
 
-#include "write_timings.h"
+#include "utility.h"
+
 #include "worksharing_info.h"
+
+#include "write_timings.h"
 
 #include "calculate_pressure.h"
 #include "calculate_gamma.h"
 #include "calculate_temperature.h"
+#include "gpu_data_handling.h"
 
 #ifdef _OPENMP
     #include <omp.h>
@@ -22,32 +26,53 @@
     #include <time.h>
     static int omp_get_thread_num() {return 0;}
     static int omp_get_num_threads() {return 1;}
-    static double omp_get_wtime() {return (clock() / CLOCKS_PER_SEC);}
+    static double omp_get_wtime()
+        {
+            struct timespec t;
+            timespec_get(&t, TIME_UTC);
+            return (double) t.tv_sec + (double) t.tv_nsec * 1e-9;
+        }
 #endif
 
 
-
 int read_command_line_arguments(int argc, char *argv[], int *primordial_chemistry, int *grid_dimension_i,
-                                 int *numThreadsPerTeam, char *timings_dir)
+                                 int *numTeams, char *timings_dir)
 {
-    if (argc != 5)
-    {
-        fprintf(stderr, "** WRONG NUMBER OF COMMAND LINE ARGUMENTS **\n");
-        fprintf(stderr, "Expected 4 -- Received %d\n", argc-1);
-        exit(0);
-    }
+    #if defined(GPU) || defined(CPU)
+        if (argc != 5)
+        {
+            fprintf(stderr, "** WRONG NUMBER OF COMMAND LINE ARGUMENTS **\n");
+            fprintf(stderr, "Expected 4 -- Received %d\n", argc-1);
+            exit(0);
+        }
+    #else
+        if (argc != 4)
+        {
+           fprintf(stderr, "** WRONG NUMBER OF COMMAND LINE ARGUMENTS **\n");
+           fprintf(stderr, "Expected 3 -- Received %d\n", argc-1);
+           exit(0); 
+        }
+    #endif
 
     *primordial_chemistry = (int) atol(argv[1]);
     *grid_dimension_i     = (int) atol(argv[2]);
-    *numThreadsPerTeam    = (int) atol(argv[3]);
-    strcpy(timings_dir, argv[4]);
 
-    // If the number of threads per team == -1 then allow to compiler to use its default number
-    if (*numThreadsPerTeam == -1)
-    {
-        int buffer1, buffer2;
-        gpu_default_worksharing_info(&buffer1, &buffer2, numThreadsPerTeam);
-    }
+    #if defined(GPU) || defined(CPU)
+        *numTeams             = (int) atol(argv[3]);
+        strcpy(timings_dir, argv[4]);
+    #else
+        *numTeams = 1;
+        strcpy(timings_dir, argv[3]);
+    #endif
+
+    #if defined(GPU)
+        // If the number of threads per team == -1 then allow to compiler to use its default number
+        if (*numTeams == -1)
+        {
+            int buffer1, buffer2;
+            gpu_default_worksharing_info(&buffer1, &numTeams, &buffer2);
+        }
+    #endif
 
     return 1;
 }
@@ -63,14 +88,13 @@ int initialise_grackle_structs(int primordial_chemistry, double initial_density,
 
     // >>> Set up unit system <<<
     my_units->comoving_coordinates = 0; // 1 if cosmological sim, 0 if not
-    my_units->density_units = 1.67e-24;
-    my_units->length_units = 1.0;
-    my_units->time_units = 1.0e12;
-    my_units->a_units = 1.0; // units for the expansion factor
-    my_units->a_value = 1. / (1. + initial_redshift) / my_units->a_units;
+    my_units->density_units        = 1.67e-24;
+    my_units->length_units         = 1.0;
+    my_units->time_units           = 1.0e12;
+    my_units->a_units              = 1.0; // units for the expansion factor
+    my_units->a_value              = 1. / (1. + initial_redshift) / my_units->a_units;
     set_velocity_units(my_units);
-
-    double temperature_units = get_temperature_units(my_units);
+    set_temperature_units(my_units);
     
     // >>> Initialise chemistry parameters and rates <<<
     local_initialize_chemistry_data(my_chemistry, my_rates, my_units);
@@ -109,7 +133,7 @@ int initialise_grackle_structs(int primordial_chemistry, double initial_density,
     for (int i=0; i<field_length; i++)
     {
         my_fields->density[i]         = initial_density;
-        my_fields->internal_energy[i] = initial_temperature / temperature_units;
+        my_fields->internal_energy[i] = initial_temperature / my_units->temperature_units;
         my_fields->HI_density[i]      = my_chemistry->HydrogenFractionByMass * my_fields->density[i];
         my_fields->HII_density[i]     = tiny_number * my_fields->density[i];
         my_fields->HM_density[i]      = tiny_number * my_fields->density[i];
@@ -132,6 +156,7 @@ int initialise_grackle_structs(int primordial_chemistry, double initial_density,
         my_fields->H2II_density[i]  = 0.01 * my_fields->density[i];
         my_fields->e_density[i]     = 0.01 * my_fields->density[i];
     }
+
     return 1;
 }
 
@@ -139,8 +164,6 @@ int free_grackle_structs(chemistry_data *my_chemistry, chemistry_data_storage *m
                           grackle_field_data *my_fields, code_units *my_units)
 {
     local_free_chemistry_data(my_chemistry, my_rates);
-
-    free(my_units);
 
     free(my_fields->density);
     free(my_fields->internal_energy);
@@ -155,32 +178,14 @@ int free_grackle_structs(chemistry_data *my_chemistry, chemistry_data_storage *m
     free(my_fields->e_density);
 }
 
-
-int run_benchmark(void (*calc_func)(double *field,
-                                    int field_length,
-                                    chemistry_data *my_chemistry,
-                                    chemistry_data_storage *my_rates,
-                                    grackle_field_data *my_fields,
-                                    code_units *my_units,
-                                    int nTeams,
-                                    int nThreadsPerTeam),
-                  void (*enter_gpu)(double *field,
-                                     chemistry_data *my_chemistry,
-                                     grackle_field_data *my_fields,
-                                     code_units *my_units),
-                  void (*exit_gpu)(double *field,
-                                    chemistry_data *my_chemistry,
-                                    grackle_field_data *my_rates,
-                                    code_units *my_units),
-                  chemistry_data *my_chemistry,
+int run_benchmark(chemistry_data *my_chemistry,
                   chemistry_data_storage *my_rates,
                   grackle_field_data *my_fields,
                   code_units *my_units,
-                  int num_timing_iter,
-                  double *calc_times,
-                  double *data_times,
                   int nTeams,
-                  int nThreadsPerTeam)
+                  int nThreadsPerTeam,
+                  int num_timing_iter,
+                  char *timing_dir)
 {
     if (!my_chemistry->use_grackle) return 1;
     
@@ -190,35 +195,87 @@ int run_benchmark(void (*calc_func)(double *field,
         field_length *= my_fields->grid_dimension[i];
     }
 
-    double *my_values;
-    my_values = malloc(field_length * sizeof(double));
+    double *my_field_buffer;
+    my_field_buffer = malloc(field_length * sizeof(double));
 
-    double calc_start_time, calc_elapsed_time;
-    double total_start_time, total_elapsed_time;
+    double calc_start_time, calc_end_time;
+    double pressure_calc_times[num_timing_iter];
+    double temperature_calc_times[num_timing_iter];
+    double gamma_calc_times[num_timing_iter];
+
+    #if defined(GPU) && defined(_OPENMP)
+        double data_start_time, data_end_time;
+        double data_mapping_times[num_timing_iter];
+    #endif
 
     for (int iter=0; iter<num_timing_iter; iter++)
     {
         
-        total_start_time = omp_get_wtime();
-
         #if defined(GPU) && defined(_OPENMP)
-            enter_gpu(my_values, my_chemistry, my_fields, my_units);
+            // fprintf(stdout, "Entering target region...\n");
+            data_start_time = omp_get_wtime();
+            enter_gpu(my_field_buffer, my_chemistry, my_fields, my_units);
+            data_end_time            = omp_get_wtime();
+            data_mapping_times[iter] = data_end_time - data_start_time;
         #endif
 
+        // Run benchmark: calculate_pressure
         calc_start_time = omp_get_wtime();
-        calc_func(my_values, field_length, my_chemistry, my_rates,
-                    my_fields, my_units, nTeams, nThreadsPerTeam);
-        calc_elapsed_time = omp_get_wtime() - calc_start_time;
+        calculate_pressure(my_field_buffer, field_length, my_chemistry, my_rates,
+                            my_fields, my_units, nTeams, nThreadsPerTeam);
+        calc_end_time             = omp_get_wtime();
+        pressure_calc_times[iter] = calc_end_time - calc_start_time;
+
+        // Run benchmark: calculate_temperature
+        calc_start_time = omp_get_wtime();
+        calculate_temperature(my_field_buffer, field_length, my_chemistry, my_rates,
+                                my_fields, my_units, nTeams, nThreadsPerTeam);
+        calc_end_time                = omp_get_wtime();
+        temperature_calc_times[iter] = calc_end_time - calc_start_time;
+
+        // Run benchmark: calculate_gamma
+        calc_start_time = omp_get_wtime();
+        calculate_gamma(my_field_buffer, field_length, my_chemistry, my_rates,
+                                my_fields, my_units, nTeams, nThreadsPerTeam);
+        calc_end_time          = omp_get_wtime();
+        gamma_calc_times[iter] = calc_end_time - calc_start_time;
 
         #if defined(GPU) && defined(_OPENMP)
-            exit_gpu(my_values, my_chemistry, my_fields, my_units);
+            // fprintf(stdout, "Exiting target region...\n");
+            data_start_time = omp_get_wtime();
+            exit_gpu(my_field_buffer, my_chemistry, my_fields, my_units);
+            data_end_time             = omp_get_wtime();
+            data_mapping_times[iter] += data_end_time - data_start_time;
         #endif
-
-        total_elapsed_time = omp_get_wtime() - total_start_time;
-
-        calc_times[iter] = calc_elapsed_time;
-        data_times[iter] = total_elapsed_time - calc_elapsed_time;
     }
+
+    // Write benchmarks to appropriate files
+    char savepath_buffer[300], parallel_mode[10];
+    get_parallel_mode(parallel_mode);
+
+    strcpy(savepath_buffer, timing_dir);
+    strcat(savepath_buffer, "pressure.txt");
+    write_timings(num_timing_iter, pressure_calc_times, nTeams, nThreadsPerTeam,
+                    parallel_mode, my_fields, my_chemistry, 0, savepath_buffer);
+
+    strcpy(savepath_buffer, timing_dir);
+    strcat(savepath_buffer, "temperature.txt");
+    write_timings(num_timing_iter, temperature_calc_times, nTeams, nThreadsPerTeam,
+                    parallel_mode, my_fields, my_chemistry, 0, savepath_buffer);
+
+    strcpy(savepath_buffer, timing_dir);
+    strcat(savepath_buffer, "gamma.txt");
+    write_timings(num_timing_iter, gamma_calc_times, nTeams, nThreadsPerTeam,
+                    parallel_mode, my_fields, my_chemistry, 0, savepath_buffer);
+
+    #if defined(GPU) && defined(_OPENMP)
+        strcpy(savepath_buffer, timing_dir);
+        strcat(savepath_buffer, "data_mapping.txt");
+        write_timings(num_timing_iter, data_mapping_times, nTeams, nThreadsPerTeam,
+                        parallel_mode, my_fields, my_chemistry, 0, savepath_buffer);
+    #endif
+
+    free(my_field_buffer);
 
     return 1;
 }
@@ -226,43 +283,49 @@ int run_benchmark(void (*calc_func)(double *field,
 
 int main(int argc, char *argv[])
 {
-    code_units *my_units;
-    chemistry_data *my_chemistry;
-    grackle_field_data *my_fields;
-    chemistry_data_storage *my_rates;
+    code_units my_units;
+    chemistry_data my_chemistry;
+    grackle_field_data my_fields;
+    chemistry_data_storage my_rates;
 
     // >>> Read command line args <<<
-    int primordial_chemistry, grid_dim_i, numThreadsPerTeam;
+    int primordial_chemistry, grid_dim_i, numTeams;
     char timing_dir[200];
 
     read_command_line_arguments(argc, argv, &primordial_chemistry, &grid_dim_i,
-                                 &numThreadsPerTeam, timing_dir);
-
-    // Read environment variables also
-    char parallel_mode[10];
-    get_parallel_mode(parallel_mode);
-    // >>> ---------------------- <<<
+                                 &numTeams, timing_dir);
 
     // >>> Set worksharing parameters <<<
     int max_threads_per_team = 1024;
     int max_threads_per_sm   = 1536;
     int num_sm               = 142;
-    int max_threads = max_threads_per_sm * num_sm;
-    
-    int numTeams = (int) max_threads / numThreadsPerTeam;
+    int max_threads          = max_threads_per_sm * num_sm;
+
+    int nThreadsPerTeam = (int) max_threads / numTeams;
 
     // Check that the GPU is active and can allocate the desired number of threads/teams
-    if (omp_get_default_device() != 0)
-    {
-        fprintf(stderr, "GPU inactive!\nExiting...\n");
-        exit(0);
-    }
-    if (!check_gpu_worksharing(&numTeams, &numThreadsPerTeam))
-    {
-        fprintf(stderr, "Error allocating requested number of teams/threads per team");
-        fprintf(stderr, "please see stdout stream for more information.\nExiting...\n");
-        exit(0);
-    }
+    #if defined(GPU)
+        if (omp_get_default_device() != 0)
+        {
+            fprintf(stderr, "GPU inactive!\nExiting...\n");
+            exit(0);
+        }
+
+        if (!check_gpu_worksharing(&numTeams, &nThreadsPerTeam))
+        {
+            fprintf(stderr, "Error allocating requested number of teams/threads!\n");
+            fprintf(stderr, "See stdout stream for more information. Exiting...\n");
+            exit(0);
+        }
+    // Check the CPU worksharing is running on the correct number of cores
+    #elif defined(CPU)
+        nThreadsPerTeam = 1;
+        if (!check_cpu_worksharing(&numTeams)) exit(0);
+    // Set the number of teams and threads for serial run
+    #else
+        numTeams        = 1;
+        nThreadsPerTeam = 1;
+    #endif
     // >>> ------------------------- <<<
 
     // >>> Set grackle parameters <<<
@@ -275,61 +338,19 @@ int main(int argc, char *argv[])
     // >>> ---------------------- <<<
 
     initialise_grackle_structs(primordial_chemistry, density, temperature, redshift, grid_rank,
-                                grid_dimensions, my_chemistry, my_rates, my_fields, my_units);
+                                grid_dimensions, &my_chemistry, &my_rates, &my_fields, &my_units);
 
     // >>> Setup timing framework <<<
-    char savepath_buffer[300]; // Used for timing output path
     int num_timing_iter = 1000;
-    double *calc_times, *data_times;
-
-    calc_times = malloc(num_timing_iter * sizeof(double));
-    data_times = malloc(num_timing_iter * sizeof(double));
     // >>> ---------------------- <<<
-    
 
-    // >>> Run pressure test <<<
-    run_benchmark(calculate_pressure, enter_calculate_pressure, exit_calculate_pressure,
-                   my_chemistry, my_rates, my_fields, my_units, num_timing_iter, calc_times,
-                   data_times, numTeams, numThreadsPerTeam);
+    // >>> Benchmark pressure, temperature and gamma calculations <<<
+    run_benchmark(&my_chemistry, &my_rates, &my_fields, &my_units, numTeams, nThreadsPerTeam,
+                    num_timing_iter, timing_dir);
+    // >>> ------------------------------------------------------ <<<
 
-    strcpy(savepath_buffer, timing_dir);
-    strcat(savepath_buffer, "pressure.txt");
-
-    write_timings(num_timing_iter, calc_times, data_times, numTeams, numThreadsPerTeam,
-                   parallel_mode, my_fields, my_chemistry, 0, savepath_buffer);
-    // >>> ----------------- <<<
-
-
-    // >>> Run gamma test <<<
-    run_benchmark(calculate_gamma, enter_calculate_gamma, exit_calculate_gamma,
-                   my_chemistry, my_rates, my_fields, my_units, num_timing_iter, calc_times,
-                   data_times, numTeams, numThreadsPerTeam);
-
-    strcpy(savepath_buffer, timing_dir);
-    strcat(savepath_buffer, "gamma.txt");
-
-    write_timings(num_timing_iter, calc_times, data_times, numTeams, numThreadsPerTeam,
-                   parallel_mode, my_fields, my_chemistry, 0, savepath_buffer);
-    // >>> ----------------- <<<
-
-
-    // >>> Run temperature test <<<
-    run_benchmark(calculate_temperature, enter_calculate_temperature, exit_calculate_temperature,
-                   my_chemistry, my_rates, my_fields, my_units, num_timing_iter, calc_times,
-                   data_times, numTeams, numThreadsPerTeam);
-
-    strcpy(savepath_buffer, timing_dir);
-    strcat(savepath_buffer, "temperature.txt");
-
-    write_timings(num_timing_iter, calc_times, data_times, numTeams, numThreadsPerTeam,
-                   parallel_mode, my_fields, my_chemistry, 0, savepath_buffer);
-    // >>> ----------------- <<<
-
- 
     // >>> Cleanup memory <<<
-    free_grackle_structs(my_chemistry, my_rates, my_fields, my_units);
-    free(calc_times);
-    free(data_times);
+    free_grackle_structs(&my_chemistry, &my_rates, &my_fields, &my_units);
     // >>> -------------- <<<
 
     return 0;
